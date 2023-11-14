@@ -5,13 +5,11 @@ import pprint
 from collections import namedtuple, defaultdict
 import json
 import yaml
-import pickle
 
 import h5py
 import pyrallis
 import numpy as np
 import torch
-import diffusers
 
 import common_utils
 from bc.bc_policy import BcPolicy, BcPolicyConfig
@@ -223,7 +221,6 @@ class MainConfig:
     batch_size: int = 256
     lr: float = 1e-4
     grad_clip: float = 5
-    weight_decay: float = 0
     ema_method: str = "none"  # none, simple, complex
     ema_tau: float = 0.01
     cosine_schedule: int = 0
@@ -297,19 +294,8 @@ def run(cfg: MainConfig, policy):
         ema_policy = common_utils.SimpleEMA(policy, cfg.ema_tau)
 
     common_utils.count_parameters(policy)
-    if cfg.weight_decay == 0:
-        print("Using Adam optimzer")
-        optim = torch.optim.Adam(policy.parameters(), cfg.lr)
-    else:
-        print("Using AdamW optimzer")
-        optim = torch.optim.AdamW(policy.parameters(), cfg.lr, weight_decay=cfg.weight_decay)
-
-    if cfg.cosine_schedule:
-        lr_scheduler = diffusers.get_cosine_schedule_with_warmup(
-            optim, cfg.lr_warm_up_steps, cfg.num_epoch * cfg.epoch_len
-        )
-    else:
-        lr_scheduler = diffusers.get_constant_schedule(optim)
+    print("Using Adam optimzer")
+    optim = torch.optim.Adam(policy.parameters(), cfg.lr)
 
     stat = common_utils.MultiCounter(
         cfg.save_dir,
@@ -348,8 +334,6 @@ def run(cfg: MainConfig, policy):
                     policy.parameters(), max_norm=cfg.grad_clip
                 )
                 optim.step()
-                lr_scheduler.step()
-                stat["train/lr"].append(lr_scheduler.get_last_lr()[0])
                 stat["train/loss"].append(loss.item())
                 stat["train/grad_norm"].append(grad_norm.item())
                 optim_step += 1
