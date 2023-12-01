@@ -206,6 +206,35 @@ class RobomimicDataset:
 
         return self._convert_to_batch(samples, device)
 
+    def sample_diffusion(self, batchsize, distance, device):
+        cond_indices = np.random.choice(len(self.idx2entry), batchsize)
+        samples = defaultdict(list)
+        for cond_idx in cond_indices:
+            episode_idx, cond_step_idx = self.idx2entry[cond_idx]
+            cond = self.data[episode_idx][cond_step_idx]
+            prev_cond_step_idx = max(0, cond_step_idx - distance)
+            prev_cond = self.data[episode_idx][prev_cond_step_idx]
+            pred_step_idx = min(len(self.data[episode_idx]) - 1, cond_step_idx + distance)
+            pred = self.data[episode_idx][pred_step_idx]
+
+            combined = stack_dict([prev_cond, cond, pred])
+            for k, v in combined.items():
+                samples[k].append(v)
+
+        return self._convert_to_batch(samples, device)
+
+
+def stack_dict(list_dict):
+    dict_list = defaultdict(list)
+    for d in list_dict:
+        for k, v in d.items():
+            dict_list[k].append(v)
+
+    stacked = {}
+    for k, v in dict_list.items():
+        stacked[k] = torch.stack(v, dim=0)
+    return stacked
+
 
 @dataclass
 class MainConfig:
@@ -283,6 +312,14 @@ def run(cfg: MainConfig, policy):
                 dataset.cfg.rl_cameras,
                 cfg.bc_policy,
             )
+        elif cfg.method == "diffusion":
+            # TODO: change this to diffusion model
+            policy = BcPolicy(
+                dataset.obs_shape,
+                dataset.action_dim,
+                dataset.cfg.rl_cameras,
+                cfg.bc_policy,
+            )
     policy = policy.to("cuda")
     print(common_utils.wrap_ruler("policy weights"))
     print(policy)
@@ -322,6 +359,11 @@ def run(cfg: MainConfig, policy):
                         cfg.arnn_policy.pred_horizon,
                         "cuda:0",
                     )
+                elif cfg.method == "diffusion":
+                    batch = dataset.sample_diffusion(cfg.batch_size, 4, "cuda:0")
+                    for k, v in batch.obs.items():
+                        print(k, v.size())
+                    assert False
                 else:
                     batch = dataset.sample_bc(cfg.batch_size, "cuda:0")
 
