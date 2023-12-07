@@ -32,3 +32,16 @@ train a action-arnn autoregressive action prediction model
 ```
 python train_bc.py --config_path cfgs/bc/square_arnn.yaml --use_wb 0
 ```
+
+
+for VQVAE
+```shell
+# clone the submodule
+git submodule init
+git submodule update
+# remember to run set_env to add stuff to PYTHONPATH
+source set_env.sh
+
+# evaluation
+python evaluate/eval_vqvae.py
+```

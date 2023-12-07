@@ -1,0 +1,4 @@
+[submodule "vqvae"]
+	path = vqvae
+	url = https://github.com/JonathanYang0127/vqvae.git
+	branch = robomimic

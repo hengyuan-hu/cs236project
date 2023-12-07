@@ -90,7 +90,8 @@ class BcPolicy(nn.Module):
 
         obs = {}
         for camera in self.rl_cameras:
-            obs[camera] = self.aug(batch.obs[camera].float())
+            obs[camera] = batch.obs[camera].float()
+            # obs[camera] = self.aug(batch.obs[camera].float())
 
         pred_action = self.forward(obs)
         loss = nn.functional.mse_loss(pred_action, action, reduction="none")

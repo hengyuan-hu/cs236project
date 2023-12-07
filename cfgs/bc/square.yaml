@@ -1,6 +1,6 @@
 dataset:
   path: data/robomimic/square/processed_data96.hdf5
-  rl_camera: agentview+robot0_eye_in_hand
+  rl_camera: agentview
 method: bc
 num_epoch: 20
 use_wb: 1

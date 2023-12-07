@@ -34,9 +34,9 @@ class Recorder:
         return f"{self.save_dir}/{name}"
 
     def _save(self, name, camera, save_images=False):
-        path = os.path.join(self.save_dir, f"{name}-{camera}.mp4")
+        path = os.path.join(self.save_dir, f"{name}-{camera}.gif")
         print(f"saving video to {path}")
-        imageio.mimsave(path, self.frames[camera], fps=20)
+        imageio.mimsave(path, self.frames[camera], duration=25)
 
         # tensor_path = os.path.join(self.save_dir, f"{name}-{camera}.pt")
         # print(f"saving tensor to {tensor_path}")
