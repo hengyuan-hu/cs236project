@@ -34,7 +34,7 @@ python train_bc.py --config_path cfgs/bc/square_arnn.yaml --use_wb 0
 ```
 
 
-for VQVAE
+### for VQVAE
 ```shell
 # clone the submodule
 git submodule init
