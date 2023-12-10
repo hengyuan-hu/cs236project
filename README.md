@@ -33,10 +33,17 @@ train a action-arnn autoregressive action prediction model
 python train_bc.py --config_path cfgs/bc/square_arnn.yaml --use_wb 0
 ```
 
-Train an unconditional diffusion model
-`CUDA_VISIBLE_DEVICES=3 python diffusion.py --batch_size 32 --camera agentview`
+### Train an unconditional diffusion model
+
+```
+CUDA_VISIBLE_DEVICES=3 python diffusion.py --batch_size 32 --camera agentview
+```
+
 Sample the diffusion model conditionally
-`CUDA_VISIBLE_DEVICES=3 python diffusion.py --batch_size 2 --viz_ckpt robomimic_it_hand_1000_0.13.ckpt --camera agentview`
+
+```
+CUDA_VISIBLE_DEVICES=3 python diffusion.py --batch_size 2 --viz_ckpt robomimic_it_hand_1000_0.13.ckpt --camera agentview
+```
 Note: Replace the checkpoint with your checkpoint. After running the code, you can find the generated images in outputs/ folder.
 
 
