@@ -18,6 +18,7 @@ parser.add_argument("--save_dir", type=str, default="exps/diffusion")
 parser.add_argument("--use_wb", type=int, default=0)
 parser.add_argument("--camera", type=str, default="agentview", help="agentview")
 parser.add_argument("--batch_size", type=int, default=32)
+parser.add_argument('--conditional', action='store_true', help='condition on the frames before last')
 parser.add_argument(
     "--sample_steps",
     type=int,
@@ -76,17 +77,21 @@ def get_model():
 
 
 @torch.no_grad()
-def sample_iadb(model, x0, nb_step, condition=None):
+def sample_iadb(model, x0, nb_step, condition=None, unconditionally_trained=True):
     x_alpha = x0
+    condition = condition.to(x0.device)
     # breakpoint()
-    d_condition = condition.to(x0.device) - x0[:, : condition.shape[1]]
+    if condition is not None and unconditionally_trained:
+        d_condition = condition.to(x0.device) - x0[:, : condition.shape[1]]
     for t in range(nb_step):
         alpha_start = t / nb_step
         alpha_end = (t + 1) / nb_step
+        if condition is not None and not unconditionally_trained:
+            x_alpha = torch.cat([condition.to(x0), x_alpha[:, condition.shape[1] :]], dim=1)
 
         d = model(x_alpha, torch.tensor(alpha_start, device=x_alpha.device))["sample"]
-        if condition is not None:
-            d = torch.cat([d_condition, d[:, d_condition.shape[1] :]], dim=1)
+        if condition is not None and unconditionally_trained:
+                d = torch.cat([d_condition, d[:, d_condition.shape[1] :]], dim=1)
         x_alpha = x_alpha + (alpha_end - alpha_start) * d
 
     return x_alpha
@@ -106,7 +111,7 @@ if args.viz_ckpt is not None:
     data = (data * 2) - 1
     condition = data[:, :6]  # condition on first two frames. Unconditional if set None
     sample = sample_iadb(
-        model, torch.randn((bz, 3 * 3, 96, 96)).to(device), nb_step=100, condition=condition
+        model, torch.randn((bz, 3 * 3, 96, 96)).to(device), nb_step=100, condition=condition, unconditionally_trained=not args.conditional
     )
     sample = sample * 0.5 + 0.5
     # sample has shape [1, 3*3, 96, 96]
@@ -143,14 +148,22 @@ for current_epoch in tqdm(range(10000)):
         # flatten by batch and frames
 
     x1 = (data * 2) - 1
-    x0 = torch.randn_like(x1)
-    bs = x0.shape[0]
 
-    alpha = torch.rand(bs, device=device)
-    x_alpha = alpha.view(-1, 1, 1, 1) * x1 + (1 - alpha).view(-1, 1, 1, 1) * x0
+    alpha = torch.rand(x1.shape[0], device=device)
+    if args.conditional:
+        x1_condition = x1[:,:6]  # conditioned on first two frames, three channel each
+        x1_gen = x1[:,6:]
+        x0_gen = torch.randn_like(x1_gen)
+        x_alpha = alpha.view(-1, 1, 1, 1) * x1_gen + (1 - alpha).view(-1, 1, 1, 1) * x0_gen
+        d = model(torch.cat([x1_condition, x_alpha], dim=1), alpha)['sample'][:,6:]
+        loss = torch.mean((d - (x1_gen - x0_gen)) ** 2)
 
-    d = model(x_alpha, alpha)["sample"]
-    loss = torch.mean((d - (x1 - x0)) ** 2)
+    else:
+        x0 = torch.randn_like(x1)
+        x_alpha = alpha.view(-1, 1, 1, 1) * x1 + (1 - alpha).view(-1, 1, 1, 1) * x0
+
+        d = model(x_alpha, alpha)["sample"]
+        loss = torch.mean((d - (x1 - x0)) ** 2)
 
     stat["loss"].append(loss.item())
 
