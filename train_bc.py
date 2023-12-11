@@ -223,6 +223,26 @@ class RobomimicDataset:
 
         return self._convert_to_batch(samples, device)
 
+    def sample_inv_dyna(self, batchsize, distance, device):
+        cond_indices = np.random.choice(len(self.idx2entry), batchsize)
+        samples = defaultdict(list)
+        for cond_idx in cond_indices:
+            episode_idx, cond_step_idx = self.idx2entry[cond_idx]
+            cond = self.data[episode_idx][cond_step_idx]
+            pred_step_idx = min(len(self.data[episode_idx]) - 1, cond_step_idx + distance)
+            pred = self.data[episode_idx][pred_step_idx]
+
+            combined = stack_dict([cond, pred])
+            actions, valid_actions = self._stack_actions(cond_idx, cond_step_idx, distance)
+            for k, v in combined.items():
+                if k == "action":
+                    samples[k].append(actions)
+                else:
+                    samples[k].append(v)
+            samples["valid_target"].append(valid_actions)
+
+        return self._convert_to_batch(samples, device)
+
 
 def stack_dict(list_dict):
     dict_list = defaultdict(list)
