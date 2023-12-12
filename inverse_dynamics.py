@@ -21,6 +21,7 @@ parser.add_argument("--seed", type=int, default=1)
 parser.add_argument("--save_dir", type=str, default="exps/inv_dyna")
 parser.add_argument("--use_wb", type=int, default=0)
 parser.add_argument("--eval", type=int, default=0)
+parser.add_argument("--env", type=str, default="lift")
 parser.add_argument("--inv_dyna_path", type=str, default=None)
 args = parser.parse_args()
 
@@ -34,9 +35,13 @@ stat = common_utils.MultiCounter(
     wb_run_name=args.save_dir.split("/")[-1],
 )
 
+if args.env == "lift":
+    path="data/robomimic/lift/processed_data96.hdf5"
+else:
+    path="data/robomimic/square/processed_data96.hdf5"
+
 cfg = DatasetConfig(
-    # path="data/robomimic/square/processed_data96.hdf5",
-    path="data/robomimic/lift/processed_data96.hdf5",
+    path=path,
     rl_camera="agentview",
     num_data=-1,
 )
@@ -66,9 +71,11 @@ class InverseDynamics(nn.Module):
     def set_diffusion_model(self):
         self.diffusion_model = diffusion.get_model()
         self.diffusion_model.to("cuda")
-        self.diffusion_model.load_state_dict(
-            torch.load("exps/lift_diffusion_conditional/robomimic_it_hand_10000_0.01.ckpt")
-        )
+        if args.env == "lift":
+            model_path = "exps/lift_diffusion_conditional/robomimic_it_hand_10000_0.01.ckpt"
+        else:
+            model_path = "exps/square_diffusion_conditional/robomimic_it_hand_10000_0.01.ckpt"
+        self.diffusion_model.load_state_dict(torch.load(model_path))
 
     def reset(self):
         self.past_obs = []
@@ -165,7 +172,7 @@ def train(dataset: RobomimicDataset, model: InverseDynamics, num_epoch, epoch_le
 
             stat["loss"].append(loss.item())
 
-        saver.save(model.state_dict(), stat["loss"].mean())
+        saver.save(model.state_dict(), -stat["loss"].mean())
         stat.summary(epoch)
 
 
@@ -176,8 +183,9 @@ def evaluate(
     record_dir=None,
     verbose=True,
 ):
+    env_name = "Lift" if args.env == "lift" else "NutAssemblySquare"
     env = PixelRobosuite(
-        "Lift",
+        env_name,
         robots=["Panda"],
         episode_length=300,
     )

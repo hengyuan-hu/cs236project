@@ -83,8 +83,8 @@ if __name__ == "__main__":
     )
 
     cfg = DatasetConfig(
-        path="data/robomimic/square/processed_data96.hdf5",
-        # path="data/robomimic/lift/processed_data96.hdf5",
+        # path="data/robomimic/square/processed_data96.hdf5",
+        path="data/robomimic/lift/processed_data96.hdf5",
         rl_camera="agentview",
         num_data=-1,
     )
@@ -116,13 +116,21 @@ if __name__ == "__main__":
         # sample = sample.view(bz, 3, 3, 96, 96).permute(1, 3, 0, 4, 2).flatten(2,3).detach().cpu().numpy()
         sample = sample.view(bz, 3, 3, 96, 96)
 
-        fig, ax = common_utils.generate_grid(rows=10, cols=3)
-        for b in range(bz)[:10]:
+        fig, ax = common_utils.generate_grid(rows=3, cols=3)
+        for b in range(bz)[:3]:
             for i in range(3):
                 img = sample[b, i].permute(1, 2, 0).detach().cpu().numpy()
                 img = np.clip(img, a_min=0, a_max=1)
                 print(f">>> {b=}, {i=}", img.min(), img.max())
                 ax[b][i].imshow(img)
+                ax[b][i].tick_params(which="minor", top=False, bottom=False, left=False)
+                ax[b][i].tick_params(which="major", top=False, bottom=False, left=False)
+                ax[b][i].axis("off")
+
+            if b == 2:
+                ax[b][0].set_title("t-4 (conditional)", y=-0.1, fontsize=30)
+                ax[b][1].set_title("t (conditional)", y=-0.1, fontsize=30)
+                ax[b][2].set_title("t+4 (prediction)", y=-0.1, fontsize=30)
 
         fig_path = os.path.join(os.path.dirname(args.viz_ckpt), "viz.png")
         print(f"saving to {fig_path}")
